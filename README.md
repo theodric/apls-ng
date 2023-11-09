@@ -28,3 +28,7 @@ The script can read a configuration file placed in /etc/apls-ng.conf (or anywher
 ![example of output](screenshots/apls-ng-conf-ss.png)
 
 The Friendly Name will be printed next to the device status in the script output. The script will execute normally without this configuration file being present, and will likewise work if a given MAC address is not specified in the file. In both of these cases the behavior is the same: the device will be simply noted as an "Unidentified device" in the output, but all other data will print normally.
+
+-------
+## Notes
+If your AP is not running on the 'wlan0' device, you'll need to update the script to reflect the correct interface name. The relevant line in the script has a comment pointing the user to where to make this change.
