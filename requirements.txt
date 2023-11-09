@@ -1,0 +1,4 @@
+configparser
+mac_vendor_lookup
+tabulate
+click

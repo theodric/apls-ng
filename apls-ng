@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+## theodric 2023-11-09
+## Prettifies output from 'iw dev wlan0 station dump'
+
+import subprocess
+import os
+import configparser
+from mac_vendor_lookup import MacLookup
+from tabulate import tabulate
+import click
+
+## this is an optional config file containing a simple look-up table that you can use to assign friendly names to known devices based on their MAC addresses
+## if you choose not to use it, or if you use it but encounter a device that is not on the list, then the script will simply run normally and report "Unknown device" for that line
+## a sample config file is provided in the repo
+CONFIG_FILE_PATH = '/etc/apls-ng.conf'
+
+def convert_seconds(seconds_str):
+    try:
+        seconds = int(seconds_str)
+    except ValueError:
+        return 0, 0, 0, 0
+
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    days, hours = divmod(hours, 24)
+
+    return days, hours, minutes, seconds
+
+def get_station_info(interface="wlan0"):
+    command = f"iw dev {interface} station dump"
+    result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, text=True)
+    output = result.stdout
+    return output
+
+def parse_station_info(station_info):
+    parsed_info = {}
+    current_device = None
+
+    for line in station_info.splitlines():
+        if "Station" in line:
+            current_device = line.split()[1]
+            parsed_info[current_device] = {"MAC Address": current_device}
+        elif current_device is not None:
+            if "rx bitrate:" in line:
+                parsed_info[current_device]["rx bandwidth"] = line.split(":")[1].strip()
+            elif "tx bitrate:" in line:
+                parsed_info[current_device]["tx bandwidth"] = line.split(":")[1].strip()
+            elif "rx bytes:" in line:
+                parsed_info[current_device]["rx mebibytes"] = f"{int(line.split(':')[1]) / (1024 * 1024):.2f} MiB"
+            elif "tx bytes:" in line:
+                parsed_info[current_device]["tx mebibytes"] = f"{int(line.split(':')[1]) / (1024 * 1024):.2f} MiB"
+            elif "signal avg:" in line:
+                parsed_info[current_device]["signal avg"] = line.split(":")[1].strip()
+            elif "connected time:" in line:
+                connected_time_seconds = int(line.split(":")[1].strip().split()[0])
+                days, hours, minutes, seconds = convert_seconds(connected_time_seconds)
+                parsed_info[current_device]["connected time"] = f"{days}d {hours}h {minutes}m {seconds}s"
+
+    return parsed_info
+
+def annotate_mac_addresses(mac_addresses):
+    annotated_addresses = {}
+    config = read_config()
+
+    for mac in mac_addresses:
+        try:
+            friendly_name = config.get(mac, 'FriendlyName')
+        except (configparser.NoOptionError, configparser.NoSectionError):
+            friendly_name = "Unknown Device"
+
+        vendor = MacLookup().lookup(mac)
+        annotated_addresses[mac] = {
+            "Friendly Name": click.style(friendly_name, fg="bright_green"),
+            "Manufacturer": click.style(vendor, fg="cyan"),
+            "MAC Address": click.style(mac, fg="red")
+        }
+
+    return annotated_addresses
+
+def read_config():
+    config = configparser.ConfigParser()
+    if os.path.exists(CONFIG_FILE_PATH):
+        config.read(CONFIG_FILE_PATH)
+    return config
+
+def main():
+    station_info = get_station_info()
+    mac_addresses = [line.split()[1] for line in station_info.splitlines() if "Station" in line]
+    annotated_addresses = annotate_mac_addresses(mac_addresses)
+    parsed_info = parse_station_info(station_info)
+
+    # Sort devices based on connected time, with the longest-connected device first
+    sorted_devices = sorted(parsed_info.keys(), key=lambda x: convert_seconds(parsed_info[x].get("connected time", "0d")), reverse=True)
+
+    for i, mac in enumerate(sorted_devices, start=1):
+        friendly_name = annotated_addresses[mac]["Friendly Name"]
+        manufacturer = annotated_addresses[mac]["Manufacturer"]
+        mac_address = annotated_addresses[mac]["MAC Address"]
+
+        device_line = f"Device {i}: {friendly_name}"
+        info_line = f"Manufacturer: {manufacturer} ({mac_address})"
+
+        click.echo(device_line)
+        click.echo(info_line)
+
+	#if you'd like to restack the output order of the table, just move these lines around to your liking
+        table_data = [
+            ("Connected Time", parsed_info[mac].get("connected time", "N/A")),
+            ("Signal Avg", parsed_info[mac].get("signal avg", "N/A")),
+            ("Rx Bandwidth", parsed_info[mac].get("rx bandwidth", "N/A")),
+            ("Tx Bandwidth", parsed_info[mac].get("tx bandwidth", "N/A")),
+            ("Rx Mebibytes", parsed_info[mac].get("rx mebibytes", "N/A")),
+            ("Tx Mebibytes", parsed_info[mac].get("tx mebibytes", "N/A")),
+        ]
+
+        table_str = tabulate(table_data, headers=["Attribute", "Value"])
+        click.echo(table_str)
+        click.echo()
+
+if __name__ == "__main__":
+    main()
