@@ -26,6 +26,7 @@ def convert_seconds(seconds_str):
 
     return days, hours, minutes, seconds
 
+# NOTE: if your AP is running on a different interface than wlan0, you'll need to update the below line to reflect that.
 def get_station_info(interface="wlan0"):
     command = f"iw dev {interface} station dump"
     result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, text=True)
