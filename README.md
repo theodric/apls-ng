@@ -14,12 +14,12 @@
 5. run ```apls-ng```
 -------
 ## Background
-This script is a wrapper around ```iw dev wlan0 station dump```, a command which will list all devices connected to an AP you are running on your Linux system (probably with hostapd). The output from 'iw' is comprehensive, but not particularly readable at a glance. This seeks to improve that thusly
+This script is a wrapper around ```iw dev wlan0 station dump```, a command which will list all devices connected to an AP you are running on your Linux system (probably with hostapd). The output from 'iw' is comprehensive, but not particularly readable at a glance. This seeks to improve that.
 
 The script is written for Python3. It structures and prettifies pertinent details about each connected device, and adds additional value in a few ways:
 1. pretty colors for 1337 hax0r cred
 2. the MAC address' assigned manufacturer is discovered and included in the output data
-3. (optional) a 'Friendly Name' can be assigned to known MAC addresses by employing an optional config file:
+3. (optional) a 'Friendly Name' can be assigned to known MAC addresses by employing an optional config file.
 
 ![example of output](screenshots/apls-ng-ss.png)
 
