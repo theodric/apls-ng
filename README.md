@@ -1,5 +1,7 @@
 # apls-ng
 
+![Not The NSA](logo.png)
+
 #### Python wrapper around 'iw' to show clients currently connected to a hostapd AP running on the same system and providing additional context around the output.
 
 ###### Initial release: 2023-Nov-09
